@@ -4,6 +4,8 @@ service TeacherOutputService {
     Session from /schemas/session.schema
     Insight from /schemas/insight.schema
     Derived_Signal from /schemas/derived_signal.schema
+    Longitudinal_Delta from /schemas/longitudinal_delta.schema  // v2 addition
+    Stability_Assessment from /schemas/stability_assessment.schema  // v3 addition
   }
 
   function get_teacher_sessions(teacher_scope: String) -> List[TeacherSessionView] {
@@ -14,6 +16,7 @@ service TeacherOutputService {
 
     for session in sessions {
 
+      // v1 insights (binary cues)
       insights = find_insights_by_session(session.session_id)
 
       cues = []
@@ -21,11 +24,45 @@ service TeacherOutputService {
         append(cues, insight.cue_type)
       }
 
+      // v2 addition: longitudinal deltas
+      deltas = find_deltas_by_session(session.session_id)
+
+      longitudinal_deltas = []
+      for delta in deltas {
+        delta_record = {
+          signal_name: delta.signal_name,
+          delta_direction: delta.delta_direction
+        }
+        append(longitudinal_deltas, delta_record)
+      }
+
+      // v3 addition: stability assessments
+      assessments = find_stability_by_session(session.session_id)
+
+      stability_records = []
+      for assessment in assessments {
+        stability_record = {
+          signal_name: assessment.signal_name,
+          stability_label: assessment.stability_label
+        }
+        append(stability_records, stability_record)
+      }
+
       view = {
         student_id: session.student_id,
         problem_id: session.problem_id,
         session_start_utc: session.session_start_utc,
         cues: cues
+      }
+
+      // v2 addition: only add if deltas exist
+      if length(longitudinal_deltas) > 0 {
+        view.longitudinal_deltas = longitudinal_deltas
+      }
+
+      // v3 addition: only add if assessments exist
+      if length(stability_records) > 0 {
+        view.stability = stability_records
       }
 
       append(views, view)

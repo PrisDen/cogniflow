@@ -1,0 +1,125 @@
+service LongitudinalDeltaComputationService {
+
+  imports: {
+    Session from /schemas/session.schema
+    Derived_Signal from /schemas/derived_signal.schema
+    Longitudinal_Delta from /schemas/longitudinal_delta.schema
+    compute_planning_latency_delta from /v2_delta_logic/planning_latency.delta
+    compute_iteration_depth_delta from /v2_delta_logic/iteration_depth.delta
+    compute_rewrite_ratio_delta from /v2_delta_logic/rewrite_ratio.delta
+    compute_error_transition_pattern_delta from /v2_delta_logic/error_transition_pattern.delta
+  }
+
+  function compute_longitudinal_deltas(session_id: UUID) -> void {
+
+    session = find_session(session_id)
+
+    if session.insight_eligible == false {
+      return
+    }
+
+    eligible_sessions = find_all_sessions_for_student(session.student_id, where insight_eligible == true)
+
+    sorted_sessions = sort(eligible_sessions, by session_start_utc ascending)
+
+    if length(sorted_sessions) < 4 {
+      return
+    }
+
+    baseline_sessions = sorted_sessions[0:3]
+
+    baseline_session_ids = extract(baseline_sessions, session_id)
+
+    if session_id IN baseline_session_ids {
+      return
+    }
+
+    most_recent_session = sorted_sessions[length(sorted_sessions) - 1]
+
+    if session_id != most_recent_session.session_id {
+      return
+    }
+
+    baseline_signals = []
+    for baseline_session in baseline_sessions {
+      signal = find_derived_signal(baseline_session.session_id)
+      append(baseline_signals, signal)
+    }
+
+    current_signal = find_derived_signal(session_id)
+
+    compute_and_persist_delta(
+      session.student_id,
+      session_id,
+      "planning_latency_seconds",
+      extract_values(baseline_signals, planning_latency_seconds),
+      current_signal.planning_latency_seconds
+    )
+
+    compute_and_persist_delta(
+      session.student_id,
+      session_id,
+      "iteration_depth",
+      extract_values(baseline_signals, iteration_depth),
+      current_signal.iteration_depth
+    )
+
+    compute_and_persist_delta(
+      session.student_id,
+      session_id,
+      "rewrite_ratio",
+      extract_values(baseline_signals, rewrite_ratio),
+      current_signal.rewrite_ratio
+    )
+  }
+
+  function compute_and_persist_delta(
+    student_id: String,
+    session_id: UUID,
+    signal_name: String,
+    baseline_values: List,
+    current_value
+  ) -> void {
+
+    delta_direction = NULL
+
+    if signal_name == "planning_latency_seconds" {
+      delta_direction = compute_planning_latency_delta(baseline_values, current_value)
+    }
+
+    if signal_name == "iteration_depth" {
+      delta_direction = compute_iteration_depth_delta(baseline_values, current_value)
+    }
+
+    if signal_name == "rewrite_ratio" {
+      delta_direction = compute_rewrite_ratio_delta(baseline_values, current_value)
+    }
+
+    if delta_direction IS NULL {
+      return
+    }
+
+    delta = new Longitudinal_Delta {
+      delta_id: generate_uuid(),
+      student_id: student_id,
+      session_id: session_id,
+      signal_name: signal_name,
+      delta_direction: delta_direction,
+      created_utc: get_current_time()
+    }
+
+    persist(delta)
+  }
+
+  function extract_values(signals: List[Derived_Signal], field_name: String) -> List {
+
+    values = []
+
+    for signal in signals {
+      value = signal[field_name]
+      append(values, value)
+    }
+
+    return values
+  }
+}

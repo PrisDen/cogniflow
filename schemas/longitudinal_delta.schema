@@ -1,0 +1,8 @@
+CREATE TABLE Longitudinal_Delta (
+  delta_id UUID PRIMARY KEY,
+  student_id VARCHAR NOT NULL,
+  session_id UUID NOT NULL REFERENCES Session(session_id),
+  signal_name VARCHAR NOT NULL,
+  delta_direction VARCHAR NOT NULL,
+  created_utc TIMESTAMP NOT NULL
+);

@@ -1,0 +1,28 @@
+function compute_planning_latency_delta(
+  baseline_values: List[Integer | NULL],
+  current_value: Integer | NULL
+) -> String | NULL {
+
+  if current_value IS NULL {
+    return NULL
+  }
+
+  non_null_baseline = filter(baseline_values, where value IS NOT NULL)
+
+  if length(non_null_baseline) == 0 {
+    return NULL
+  }
+
+  baseline_min = min(non_null_baseline)
+  baseline_max = max(non_null_baseline)
+
+  if current_value > baseline_max {
+    return "More than your previous attempts"
+  }
+
+  if current_value < baseline_min {
+    return "Less than before"
+  }
+
+  return "No change detected"
+}

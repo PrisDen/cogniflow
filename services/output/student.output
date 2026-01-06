@@ -2,43 +2,51 @@ service StudentOutputService {
 
   imports: {
     Session from /schemas/session.schema
+    Longitudinal_Delta from /schemas/longitudinal_delta.schema
+    Stability_Assessment from /schemas/stability_assessment.schema  // v3 addition
   }
 
-  function get_student_sessions(student_id: String) -> List[StudentSessionView] {
+  function get_student_sessions(authenticated_student_id: String)
+    -> List[StudentSessionView] {
 
-    sessions = find_sessions_by_student(student_id)
-    
+    sessions = find_sessions_by_student(authenticated_student_id)
+
     views = []
-    
+
     for session in sessions {
-      view = create_student_session_view(session)
+
+      // v1 projection (no Event access)
+      view = {
+        problem_id: session.problem_id,
+        session_start_utc: session.session_start_utc,
+        is_completed: session.is_completed
+      }
+
+      // v2 projection (self-only, silence by default)
+      deltas = find_deltas_by_session(session.session_id)
+
+      if length(deltas) > 0 {
+        delta_strings = []
+        for delta in deltas {
+          append(delta_strings, delta.delta_direction)
+        }
+        view.longitudinal_deltas = delta_strings
+      }
+
+      // v3 projection (stability labels only, no signal names)
+      assessments = find_stability_by_session(session.session_id)
+
+      if length(assessments) > 0 {
+        stability_labels = []
+        for assessment in assessments {
+          append(stability_labels, assessment.stability_label)
+        }
+        view.stability = stability_labels
+      }
+
       append(views, view)
     }
-    
+
     return views
-  }
-
-  function create_student_session_view(session: Session) -> StudentSessionView {
-
-    view = new StudentSessionView {
-      problem_id: session.problem_id,
-      session_start_utc: session.session_start_utc,
-      is_completed: has_submit_event(session.session_id)
-    }
-    
-    return view
-  }
-
-  function has_submit_event(session_id: UUID) -> Boolean {
-
-    events = find_events_by_session(session_id)
-    
-    for event in events {
-      if event.event_type == 'submit' {
-        return true
-      }
-    }
-    
-    return false
   }
 }

@@ -1,0 +1,7 @@
+function compute_error_transition_pattern_delta(
+  baseline_values: List[List[String] | NULL],
+  current_value: List[String] | NULL
+) -> String | NULL {
+
+  return NULL
+}

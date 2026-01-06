@@ -1,0 +1,118 @@
+service StabilityAssessmentService {
+
+  imports: {
+    Session from /schemas/session.schema
+    Derived_Signal from /schemas/derived_signal.schema
+    Stability_Assessment from /schemas/stability_assessment.schema
+    compute_planning_latency_stability from /v3_stability_logic/planning_latency.stability
+    compute_iteration_depth_stability from /v3_stability_logic/iteration_depth.stability
+    compute_rewrite_ratio_stability from /v3_stability_logic/rewrite_ratio.stability
+  }
+
+  function assess_stability(session_id: UUID) -> void {
+
+    session = find_session(session_id)
+
+    if session.insight_eligible == false {
+      return
+    }
+
+    eligible_sessions = find_all_sessions_for_student(session.student_id, where insight_eligible == true)
+
+    sorted_sessions = sort(eligible_sessions, by session_start_utc ascending)
+
+    if length(sorted_sessions) < 5 {
+      return
+    }
+
+    most_recent_session = sorted_sessions[length(sorted_sessions) - 1]
+
+    if session_id != most_recent_session.session_id {
+      return
+    }
+
+    stability_window = sorted_sessions[length(sorted_sessions) - 5 : length(sorted_sessions) - 1]
+
+    window_signals = []
+    for window_session in stability_window {
+      signal = find_derived_signal(window_session.session_id)
+      append(window_signals, signal)
+    }
+
+    current_signal = find_derived_signal(session_id)
+
+    assess_and_persist_stability(
+      session.student_id,
+      session_id,
+      "planning_latency_seconds",
+      extract_values(window_signals, planning_latency_seconds),
+      current_signal.planning_latency_seconds
+    )
+
+    assess_and_persist_stability(
+      session.student_id,
+      session_id,
+      "iteration_depth",
+      extract_values(window_signals, iteration_depth),
+      current_signal.iteration_depth
+    )
+
+    assess_and_persist_stability(
+      session.student_id,
+      session_id,
+      "rewrite_ratio",
+      extract_values(window_signals, rewrite_ratio),
+      current_signal.rewrite_ratio
+    )
+  }
+
+  function assess_and_persist_stability(
+    student_id: String,
+    session_id: UUID,
+    signal_name: String,
+    window_values: List,
+    current_value
+  ) -> void {
+
+    stability_label = NULL
+
+    if signal_name == "planning_latency_seconds" {
+      stability_label = compute_planning_latency_stability(window_values, current_value)
+    }
+
+    if signal_name == "iteration_depth" {
+      stability_label = compute_iteration_depth_stability(window_values, current_value)
+    }
+
+    if signal_name == "rewrite_ratio" {
+      stability_label = compute_rewrite_ratio_stability(window_values, current_value)
+    }
+
+    if stability_label IS NULL {
+      return
+    }
+
+    assessment = new Stability_Assessment {
+      stability_id: generate_uuid(),
+      student_id: student_id,
+      session_id: session_id,
+      signal_name: signal_name,
+      stability_label: stability_label,
+      created_utc: get_current_time()
+    }
+
+    persist(assessment)
+  }
+
+  function extract_values(signals: List[Derived_Signal], field_name: String) -> List {
+
+    values = []
+
+    for signal in signals {
+      value = signal[field_name]
+      append(values, value)
+    }
+
+    return values
+  }
+}
