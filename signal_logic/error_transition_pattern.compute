@@ -1,0 +1,16 @@
+function compute_error_transition_pattern(events: List[Event]) -> List[String] | NULL {
+  filtered = filter(events, where event_type == 'error' AND error_category IS NOT NULL)
+  
+  if length(filtered) == 0 {
+    return []
+  }
+  
+  sorted = sort(filtered, by timestamp_utc ascending)
+  
+  pattern = []
+  for event in sorted {
+    append(pattern, event.error_category)
+  }
+  
+  return pattern
+}

@@ -1,0 +1,11 @@
+rule translating_logic(rewrite_ratio, iteration_depth) -> Boolean {
+  if rewrite_ratio IS NOT NULL {
+    return true
+  }
+  
+  if iteration_depth IS NOT NULL {
+    return true
+  }
+  
+  return false
+}

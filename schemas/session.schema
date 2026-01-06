@@ -1,0 +1,9 @@
+CREATE TABLE Session (
+  session_id UUID PRIMARY KEY,
+  student_id VARCHAR NOT NULL,
+  problem_id VARCHAR NOT NULL,
+  session_start_utc TIMESTAMP NOT NULL,
+  session_end_utc TIMESTAMP NOT NULL,
+  visibility_code VARCHAR NOT NULL,
+  insight_eligible BOOLEAN NOT NULL
+);

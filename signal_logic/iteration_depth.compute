@@ -1,0 +1,11 @@
+function compute_iteration_depth(events: List[Event]) -> Integer | NULL {
+  filtered = filter(events, where event_type == 'run_code')
+  
+  count = length(filtered)
+  
+  if count == 0 {
+    return NULL
+  }
+  
+  return count
+}

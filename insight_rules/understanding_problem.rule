@@ -1,0 +1,7 @@
+rule understanding_problem(planning_latency_seconds) -> Boolean {
+  if planning_latency_seconds IS NOT NULL {
+    return true
+  }
+  
+  return false
+}

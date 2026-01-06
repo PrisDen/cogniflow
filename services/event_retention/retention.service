@@ -1,0 +1,39 @@
+service EventRetentionService {
+
+  imports: {
+    Event from /schemas/event.schema
+    InsightCreationService from service_interface
+  }
+
+  function retain_events(session_id: UUID) -> void {
+
+    events = read_all_events(session_id)
+
+    for event in events {
+      assert_allowed_event_shape(event)
+    }
+
+    trigger_insight_creation(session_id)
+  }
+
+  function assert_allowed_event_shape(event: Event) -> void {
+
+    allowed_fields = [
+      'event_id',
+      'session_id',
+      'event_type',
+      'timestamp_utc',
+      'error_category'
+    ]
+
+    for field in fields(event) {
+      if field NOT IN allowed_fields {
+        throw RetentionViolationError("Unexpected field on Event: " + field)
+      }
+    }
+  }
+
+  function trigger_insight_creation(session_id: UUID) -> void {
+    call InsightCreationService.create_insights(session_id)
+  }
+}

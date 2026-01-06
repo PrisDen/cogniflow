@@ -1,0 +1,44 @@
+service SignalComputationService {
+
+  imports: {
+    Event from /schemas/event.schema
+    Session from /schemas/session.schema
+    Derived_Signal from /schemas/derived_signal.schema
+    compute_planning_latency from /signal_logic/planning_latency.compute
+    compute_iteration_depth from /signal_logic/iteration_depth.compute
+    compute_rewrite_ratio from /signal_logic/rewrite_ratio.compute
+    compute_error_transition_pattern from /signal_logic/error_transition_pattern.compute
+    EventRetentionService from service_interface
+  }
+
+  function compute_signals(session_id: UUID) -> void {
+
+    events = read_all_events(session_id)
+    session = find_session(session_id)
+    
+    planning_latency_seconds = compute_planning_latency(events, session.session_start_utc)
+    
+    iteration_depth = compute_iteration_depth(events)
+    
+    rewrite_ratio = compute_rewrite_ratio(events)
+    
+    error_transition_pattern = compute_error_transition_pattern(events)
+    
+    derived_signal = new Derived_Signal {
+      signal_id: generate_uuid(),
+      session_id: session_id,
+      planning_latency_seconds: planning_latency_seconds,
+      iteration_depth: iteration_depth,
+      rewrite_ratio: rewrite_ratio,
+      error_transition_pattern: error_transition_pattern
+    }
+    
+    persist(derived_signal)
+    
+    trigger_event_retention(session_id)
+  }
+
+  function trigger_event_retention(session_id: UUID) -> void {
+    call EventRetentionService.retain_events(session_id)
+  }
+}

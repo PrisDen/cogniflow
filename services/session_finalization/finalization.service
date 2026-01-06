@@ -1,0 +1,74 @@
+service SessionFinalizationService {
+
+  imports: {
+    Session from /schemas/session.schema
+    Event from /schemas/event.schema
+    SignalComputationService from service_interface
+  }
+
+  constants: {
+    HIGH_VISIBILITY_EVENT_FLOOR
+    MEDIUM_VISIBILITY_EVENT_FLOOR
+  }
+
+  function finalize_session(session_id: UUID) -> void {
+
+    events = read_all_events(session_id)
+    
+    observable_count = count_observable_events(events)
+    
+    visibility_code = compute_visibility_code(observable_count)
+    
+    insight_eligible = compute_insight_eligible(visibility_code)
+    
+    session = find_session(session_id)
+    session.visibility_code = visibility_code
+    session.insight_eligible = insight_eligible
+    update(session)
+    
+    trigger_signal_computation(session_id)
+  }
+
+  function count_observable_events(events: List[Event]) -> Integer {
+
+    count = 0
+    
+    for event in events {
+      if event.event_type != 'idle' {
+        count = count + 1
+      }
+    }
+    
+    return count
+  }
+
+  function compute_visibility_code(event_count: Integer) -> String {
+
+    if event_count >= HIGH_VISIBILITY_EVENT_FLOOR {
+      return "HIGH"
+    }
+    
+    if event_count >= MEDIUM_VISIBILITY_EVENT_FLOOR {
+      return "MEDIUM"
+    }
+    
+    return "LOW"
+  }
+
+  function compute_insight_eligible(visibility_code: String) -> Boolean {
+
+    if visibility_code == "HIGH" {
+      return true
+    }
+    
+    if visibility_code == "MEDIUM" {
+      return true
+    }
+    
+    return false
+  }
+
+  function trigger_signal_computation(session_id: UUID) -> void {
+    call SignalComputationService.compute_signals(session_id)
+  }
+}

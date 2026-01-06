@@ -1,0 +1,6 @@
+CREATE TABLE Insight (
+  insight_id UUID PRIMARY KEY,
+  session_id UUID NOT NULL REFERENCES Session(session_id),
+  cue_type VARCHAR NOT NULL,
+  created_utc TIMESTAMP NOT NULL
+);

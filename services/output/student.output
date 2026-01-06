@@ -1,0 +1,44 @@
+service StudentOutputService {
+
+  imports: {
+    Session from /schemas/session.schema
+  }
+
+  function get_student_sessions(student_id: String) -> List[StudentSessionView] {
+
+    sessions = find_sessions_by_student(student_id)
+    
+    views = []
+    
+    for session in sessions {
+      view = create_student_session_view(session)
+      append(views, view)
+    }
+    
+    return views
+  }
+
+  function create_student_session_view(session: Session) -> StudentSessionView {
+
+    view = new StudentSessionView {
+      problem_id: session.problem_id,
+      session_start_utc: session.session_start_utc,
+      is_completed: has_submit_event(session.session_id)
+    }
+    
+    return view
+  }
+
+  function has_submit_event(session_id: UUID) -> Boolean {
+
+    events = find_events_by_session(session_id)
+    
+    for event in events {
+      if event.event_type == 'submit' {
+        return true
+      }
+    }
+    
+    return false
+  }
+}

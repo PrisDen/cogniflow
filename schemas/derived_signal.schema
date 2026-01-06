@@ -1,0 +1,8 @@
+CREATE TABLE Derived_Signal (
+  signal_id UUID PRIMARY KEY,
+  session_id UUID NOT NULL UNIQUE REFERENCES Session(session_id),
+  planning_latency_seconds INTEGER NULL,
+  iteration_depth INTEGER NULL,
+  rewrite_ratio FLOAT NULL,
+  error_transition_pattern JSON NULL
+);

@@ -1,0 +1,7 @@
+rule debugging_effectively(error_transition_pattern) -> Boolean {
+  if error_transition_pattern IS NOT NULL {
+    return true
+  }
+  
+  return false
+}

@@ -1,0 +1,46 @@
+service InsightCreationService {
+
+  imports: {
+    Session from /schemas/session.schema
+    Derived_Signal from /schemas/derived_signal.schema
+    Insight from /schemas/insight.schema
+    understanding_problem from /insight_rules/understanding_problem.rule
+    translating_logic from /insight_rules/translating_logic.rule
+    debugging_effectively from /insight_rules/debugging_effectively.rule
+  }
+
+  function create_insights(session_id: UUID) -> void {
+
+    session = find_session(session_id)
+    
+    if session.insight_eligible == false {
+      return
+    }
+    
+    signals = find_derived_signal(session_id)
+    
+    if understanding_problem(signals.planning_latency_seconds) == true {
+      create_insight(session_id, "understanding_problem")
+    }
+    
+    if translating_logic(signals.rewrite_ratio, signals.iteration_depth) == true {
+      create_insight(session_id, "translating_logic")
+    }
+    
+    if debugging_effectively(signals.error_transition_pattern) == true {
+      create_insight(session_id, "debugging_effectively")
+    }
+  }
+
+  function create_insight(session_id: UUID, cue_type: String) -> void {
+
+    insight = new Insight {
+      insight_id: generate_uuid(),
+      session_id: session_id,
+      cue_type: cue_type,
+      created_utc: get_current_time()
+    }
+    
+    persist(insight)
+  }
+}

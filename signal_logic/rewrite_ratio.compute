@@ -1,0 +1,15 @@
+function compute_rewrite_ratio(events: List[Event]) -> Float | NULL {
+  insert_filtered = filter(events, where event_type == 'code_insert')
+  insert_count = length(insert_filtered)
+  
+  delete_filtered = filter(events, where event_type == 'code_delete')
+  delete_count = length(delete_filtered)
+  
+  if insert_count == 0 {
+    return NULL
+  }
+  
+  ratio = delete_count / insert_count
+  
+  return ratio
+}

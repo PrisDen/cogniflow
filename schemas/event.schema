@@ -1,0 +1,7 @@
+CREATE TABLE Event (
+  event_id UUID PRIMARY KEY,
+  session_id UUID NOT NULL REFERENCES Session(session_id),
+  event_type VARCHAR NOT NULL,
+  timestamp_utc TIMESTAMP NOT NULL,
+  error_category VARCHAR NULL
+);

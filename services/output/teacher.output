@@ -1,0 +1,56 @@
+service TeacherOutputService {
+
+  imports: {
+    Session from /schemas/session.schema
+    Insight from /schemas/insight.schema
+    Derived_Signal from /schemas/derived_signal.schema
+  }
+
+  function get_teacher_sessions(teacher_scope: String) -> List[TeacherSessionView] {
+
+    sessions = find_sessions_by_scope(teacher_scope)
+
+    views = []
+
+    for session in sessions {
+
+      insights = find_insights_by_session(session.session_id)
+
+      cues = []
+      for insight in insights {
+        append(cues, insight.cue_type)
+      }
+
+      view = {
+        student_id: session.student_id,
+        problem_id: session.problem_id,
+        session_start_utc: session.session_start_utc,
+        cues: cues
+      }
+
+      append(views, view)
+    }
+
+    return views
+  }
+
+  function get_session_explanation(session_id: UUID, cue_type: String) -> ExplanationView {
+
+    insight = find_insight_by_session_and_cue(session_id, cue_type)
+
+    if insight DOES NOT EXIST {
+      return {
+        message: "Insufficient process data for this session"
+      }
+    }
+
+    signals = find_derived_signal(session_id)
+
+    return {
+      planning_latency_seconds: signals.planning_latency_seconds,
+      iteration_depth: signals.iteration_depth,
+      rewrite_ratio: signals.rewrite_ratio,
+      error_transition_pattern: signals.error_transition_pattern
+    }
+  }
+}

@@ -1,0 +1,106 @@
+service EventIngestionService {
+
+  imports: {
+    Session from /schemas/session.schema
+    Event from /schemas/event.schema
+    SessionFinalizationService from service_interface
+  }
+
+  function ingest_event(payload: EventPayload) -> void {
+
+    validate_schema(payload)
+
+    session = find_session(payload.session_id)
+
+    if session DOES NOT EXIST {
+      create_session(payload)
+    }
+
+    persist_event(payload)
+
+    if is_session_end_event(payload) {
+      close_session(payload.session_id, payload.timestamp_utc)
+      trigger_session_finalization(payload.session_id)
+    }
+  }
+
+  function create_session(payload: EventPayload) -> void {
+
+    session = new Session {
+      session_id: payload.session_id,
+      student_id: extract_student_id_from_context(),
+      problem_id: extract_problem_id_from_context(),
+      session_start_utc: payload.timestamp_utc,
+      session_end_utc: payload.timestamp_utc
+    }
+
+    persist(session)
+  }
+
+  function persist_event(payload: EventPayload) -> void {
+
+    event = new Event {
+      event_id: generate_uuid(),
+      session_id: payload.session_id,
+      event_type: payload.event_type,
+      timestamp_utc: payload.timestamp_utc,
+      error_category: payload.error_category
+    }
+
+    persist(event)
+  }
+
+  function is_session_end_event(payload: EventPayload) -> Boolean {
+
+    if payload.event_type == 'submit' {
+      return true
+    }
+
+    return false
+  }
+
+  function close_session(session_id: UUID, end_time: Timestamp) -> void {
+
+    session = find_session(session_id)
+
+    if session.session_end_utc IS NULL OR end_time > session.session_end_utc {
+      session.session_end_utc = end_time
+      update(session)
+    }
+  }
+
+  function validate_schema(payload: EventPayload) -> void {
+
+    required_fields = ['event_type', 'timestamp_utc', 'session_id']
+
+    for field in required_fields {
+      if payload[field] DOES NOT EXIST {
+        throw ValidationError("Missing required field: " + field)
+      }
+    }
+
+    valid_event_types = [
+      'code_insert',
+      'code_delete',
+      'run_code',
+      'error',
+      'idle',
+      'submit'
+    ]
+
+    if payload.event_type NOT IN valid_event_types {
+      throw ValidationError("Invalid event_type")
+    }
+
+    if payload.event_type == 'error' {
+      valid_categories = ['syntax', 'runtime', 'test']
+      if payload.error_category NOT IN valid_categories {
+        throw ValidationError("Invalid error_category")
+      }
+    }
+  }
+
+  function trigger_session_finalization(session_id: UUID) -> void {
+    call SessionFinalizationService.finalize_session(session_id)
+  }
+}

@@ -1,0 +1,14 @@
+function compute_planning_latency(events: List[Event], session_start_utc: Timestamp) -> Integer | NULL {
+  filtered = filter(events, where event_type == 'run_code')
+  
+  if length(filtered) == 0 {
+    return NULL
+  }
+  
+  sorted = sort(filtered, by timestamp_utc ascending)
+  first_run = sorted[0]
+  
+  difference_seconds = truncate((first_run.timestamp_utc - session_start_utc).total_seconds())
+  
+  return difference_seconds
+}
