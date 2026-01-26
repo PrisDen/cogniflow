@@ -1,0 +1,277 @@
+Phase 5.2 — Signal Computation Specification (v1)
+
+Status: LOCKED once approved
+Scope: Cogniflow v1 only
+Authority: If implementation conflicts with this document, this document wins.
+
+⸻
+
+1. Purpose
+
+This document defines the exact, technical meaning of Cogniflow v1 signals.
+
+It exists to:
+	•	Prevent semantic drift
+	•	Enforce non-evaluative language
+	•	Provide an implementation contract for engineering
+	•	Serve as the reference for validation and future evolution
+
+This document is intentionally narrow. It does not define UI, pedagogy, or long-term interpretation.
+
+⸻
+
+2. Scope Boundaries (Strict)
+
+Included
+	•	Single-session signals only
+	•	Deterministic computation
+	•	Backend, read-only derivation
+	•	Human-readable descriptions derived mechanically from data
+
+Explicitly Excluded
+	•	Cross-session aggregation
+	•	Cross-user comparison
+	•	Scores or rankings
+	•	Advice or prescriptions
+	•	Trait attribution
+	•	ML or probabilistic inference
+
+⸻
+
+3. Data Sources (v1)
+
+Signals may only be computed from the following tables:
+	•	sessions
+	•	run_events
+	•	error_events
+
+No other data sources are permitted in v1.
+
+⸻
+
+4. General Signal Rules
+
+All v1 signals MUST satisfy all of the following:
+	1.	Session-local
+Signals describe only what occurred within a single session.
+	2.	Descriptive, not evaluative
+Allowed verbs: occurred, was executed, happened.
+Forbidden verbs: struggled, succeeded, improved, persisted.
+	3.	Mechanically derivable
+A signal must be computable by explicit logic, without interpretation of intent.
+	4.	Omissible
+If required data is missing, the signal is omitted rather than inferred.
+	5.	Exact wording
+Signal descriptions must match the wording specified in this document exactly.
+
+⸻
+
+5. Signal Categories (v1)
+
+v1 defines exactly three categories:
+	•	Category A — Execution Activity
+	•	Category B — Errors
+	•	Category C — Time
+
+No additional categories are allowed in v1.
+
+⸻
+
+6. Category A — Execution Activity
+
+Signal A1 — Run Count
+
+Key: run_count
+
+Raw Data:
+	•	run_events filtered by session_id
+
+Computation:
+	•	Count of all run events in the session
+
+Value Type:
+	•	Integer
+
+Description Rules:
+	•	If run_count == 1:
+“You ran your code once during this session.”
+	•	If run_count > 1:
+“You ran your code multiple times during this session.”
+
+Forbidden:
+	•	Numeric counts in description
+	•	Any implication of efficiency or repetition quality
+
+⸻
+
+Signal A2 — Repeated Execution Presence
+
+Key: repeated_execution
+
+Raw Data:
+	•	Derived from run_count
+
+Computation:
+	•	run_count > 1
+
+Value Type:
+	•	Boolean
+
+Description (only if true):
+
+“The code was executed more than once during this session.”
+
+Forbidden:
+	•	References to revision, iteration strategy, or improvement
+
+⸻
+
+7. Category B — Errors
+
+Signal B1 — Error Presence
+
+Key: errors_present
+
+Raw Data:
+	•	error_events joined to run_events by run_id
+
+Computation:
+	•	True if at least one error event exists for the session
+
+Value Type:
+	•	Boolean
+
+Description (only if true):
+
+“Errors occurred during this session.”
+
+Forbidden:
+	•	Error counts in description
+	•	Language implying mistake, struggle, or fault
+
+⸻
+
+Signal B2 — Error Followed by Run
+
+Key: error_followed_by_run
+
+Raw Data:
+	•	error_events.occurred_at
+	•	run_events.executed_at
+
+Computation:
+	•	True if any run event occurred after the first error event
+
+Value Type:
+	•	Boolean
+
+Description (only if true):
+
+“After an error occurred, the code was run again.”
+
+Forbidden:
+	•	Words like persistence, recovery, resilience
+
+⸻
+
+8. Category C — Time
+
+Signal C1 — Session Duration
+
+Key: session_duration_minutes
+
+Raw Data:
+	•	sessions.started_at
+	•	sessions.ended_at
+
+Computation:
+	•	ended_at − started_at, rounded to whole minutes
+
+Value Type:
+	•	Integer (minutes)
+
+Description (only if ended_at exists):
+
+“This session lasted X minutes.”
+
+Forbidden:
+	•	Qualitative descriptors (long, short, quick, slow)
+
+⸻
+
+Signal C2 — Time Before First Run
+
+Key: time_to_first_run_minutes
+
+Raw Data:
+	•	sessions.started_at
+	•	earliest run_events.executed_at
+
+Computation:
+	•	first_run − started_at, rounded to whole minutes
+
+Value Type:
+	•	Integer (minutes)
+
+Description (only if at least one run exists):
+
+“The first code execution occurred after X minutes.”
+
+Forbidden:
+	•	Seconds-level precision
+	•	Interpretation of planning or hesitation
+
+⸻
+
+9. Response Structure (v1)
+
+Signals are returned as a list. Order has no semantic meaning.
+
+Example:
+
+{
+  "session_id": 42,
+  "signals": [
+    {
+      "key": "run_count",
+      "value": 5,
+      "description": "You ran your code multiple times during this session."
+    }
+  ]
+}
+
+
+⸻
+
+10. Explicit Deferrals
+
+The following are not permitted in v1 and are deferred to later versions:
+
+v2 Candidates
+	•	Cross-session aggregation
+	•	Per-user baselines
+	•	Error categorization
+	•	Strategy change heuristics
+
+v3 Candidates
+	•	ML-based interpretation
+	•	Longitudinal trajectories
+	•	Institutional aggregation
+
+⸻
+
+11. Invariant Rule
+
+No signal may be added, removed, or reworded without:
+	1.	Updating this document
+	2.	Explicitly justifying the change
+
+⸻
+
+12. Final Note
+
+Cogniflow v1 signals are mirrors, not measurements.
+
+They exist to make activity visible — not to define ability, quality, or merit.
+
+This document enforces that boundary.
