@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MonacoEditor from '@monaco-editor/react'
 
 function Editor() {
@@ -9,6 +10,7 @@ function Editor() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchPrompt = async () => {
@@ -96,6 +98,34 @@ function Editor() {
     }
   }
 
+  const handleEndSession = async () => {
+    if (!sessionId) return
+
+    setError('')
+
+    try {
+      const response = await fetch('http://localhost:8000/sessions/end', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        setError(data.detail || 'Failed to end session')
+        return
+      }
+
+      navigate(`/session/${sessionId}/summary`)
+    } catch (err) {
+      setError('Network error')
+    }
+  }
+
   if (loading) {
     return <div>Loading...</div>
   }
@@ -128,6 +158,9 @@ function Editor() {
             disabled={running || !code}
           >
             Run
+          </button>
+          <button onClick={handleEndSession}>
+            End session
           </button>
         </div>
       )}
